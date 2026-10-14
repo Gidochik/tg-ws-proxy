@@ -1,0 +1,61 @@
+name: Build Android APK and Windows EXE
+on: [push, workflow_dispatch]
+
+jobs:
+  # 1. Сборка под Android (.apk)
+  build-android:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clone Flowseal core
+        run: git clone https://github.com/Flowseal/tg-ws-proxy.git flowseal_core
+      - name: Create buildozer.spec
+        run: |
+          cat << 'EOF' > buildozer.spec
+          [app]
+          title = TG WS Proxy
+          package.name = tgwsproxy
+          package.domain = org.flowseal.custom
+          source.dir = .
+          source.include_exts = py,json,pem,crt,txt
+          version = 1.11.2
+          requirements = python3,kivy==2.3.0,cryptography,websockets,aiohttp,certifi,h2
+          orientation = portrait
+          fullscreen = 0
+          android.permissions = INTERNET,ACCESS_NETWORK_STATE
+          android.api = 33
+          android.minapi = 24
+          android.archs = arm64-v8a
+          EOF
+      - name: Build APK
+        uses: ArtemSBulgakov/buildozer-action@v1
+        with:
+          workdir: .
+          buildozer_version: master
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TG-WS-Proxy-Android-APK
+          path: bin/*.apk
+
+  # 2. Сборка под ПК Windows (.exe)
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Clone Flowseal core
+        run: git clone https://github.com/Flowseal/tg-ws-proxy.git flowseal_core
+      - name: Install dependencies
+        run: |
+          pip install kivy cryptography websockets aiohttp certifi h2 pyinstaller
+      - name: Build EXE
+        run: |
+          pyinstaller --noconsole --onefile --name "TG-WS-Proxy-PC" --add-data "flowseal_core;flowseal_core" main.py
+      - name: Upload Windows EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: TG-WS-Proxy-Windows-EXE
+          path: dist/*.exe
