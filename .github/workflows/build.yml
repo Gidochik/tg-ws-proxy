@@ -2,52 +2,45 @@ name: Build Android APK and Windows EXE
 on: [push, workflow_dispatch]
 
 jobs:
-  # 1. Сборка под ПК Windows (.exe) — собирается за 2 минуты
   build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Clone Flowseal core
         run: |
           git clone --depth 1 https://github.com/Flowseal/tg-ws-proxy.git flowseal_core
           if (Test-Path flowseal_core\.git) { Remove-Item -Recurse -Force flowseal_core\.git }
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install kivy[base] kivy_deps.sdl2 kivy_deps.glew cryptography websockets aiohttp certifi h2 pyinstaller
-
       - name: Build EXE
         run: |
           python -c "import os, PyInstaller.__main__, kivy_deps.sdl2, kivy_deps.glew; bins = [f'--add-binary={p};.' for p in (kivy_deps.sdl2.dep_bins + kivy_deps.glew.dep_bins)]; PyInstaller.__main__.run(['main.py', '--noconsole', '--onefile', '--name=TG-WS-Proxy-PC', '--add-data=flowseal_core;flowseal_core', '--hidden-import=websockets', '--hidden-import=aiohttp', '--hidden-import=cryptography', '--hidden-import=h2'] + bins)"
-
       - name: Upload Windows EXE
         uses: actions/upload-artifact@v4
         with:
           name: TG-WS-Proxy-Windows-EXE
           path: dist/*.exe
 
-  # 2. Сборка под Android (.apk)
   build-android:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: Clone Flowseal core
         run: |
           git clone --depth 1 https://github.com/Flowseal/tg-ws-proxy.git flowseal_core
           rm -rf flowseal_core/.git
-
-      - name: Install system packages for Buildozer
+      - name: Install system packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
-
+          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
       - name: Create buildozer.spec
         run: |
           cat << 'EOF' > buildozer.spec
@@ -58,7 +51,7 @@ jobs:
           source.dir = .
           source.include_exts = py,json,pem,crt,txt
           version = 1.11.2
-          requirements = python3,kivy==2.3.0,websockets,certifi,h2,hpack,hyperframe,pycryptodome
+          requirements = python3==3.11.6,hostpython3==3.11.6,kivy==2.3.0,websockets,certifi,h2,hpack,hyperframe
           orientation = portrait
           fullscreen = 0
           android.permissions = INTERNET,ACCESS_NETWORK_STATE
@@ -67,14 +60,12 @@ jobs:
           android.ndk = 25b
           android.archs = arm64-v8a
           android.accept_sdk_license = True
-          p4a.branch = master
+          p4a.branch = release-2024.01.21
           EOF
-
-      - name: Build APK with Buildozer
+      - name: Build APK
         run: |
-          pip3 install --upgrade pip buildozer cython==0.29.36
+          pip install --upgrade pip "cython<3.0" buildozer==1.5.0
           yes | buildozer android debug
-
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
