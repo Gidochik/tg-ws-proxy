@@ -52,7 +52,7 @@ DEFAULT_CONFIG = {
     "cf_custom_enabled": False,
     "cf_custom_domain": "",
     "cf_worker_enabled": True,
-    "cf_worker_domain": "late-snow-ee79.kononovmaks2008.workers.dev",
+    "cf_worker_domain": "late-snow-ee79.kononovmaks2008.workers.dev, muddy-dream-1a5c.maxkononov2008.workers.dev",
     "verbose": False,
     "disable_tls": True,
     "buffer_kb": "256",
